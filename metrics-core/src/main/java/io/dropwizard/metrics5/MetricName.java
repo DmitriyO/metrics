@@ -30,14 +30,25 @@ public class MetricName implements Comparable<MetricName> {
     
     private final String key;
     private final Map<String, String> tags;
-    
+    private TagOrdering tagOrdering = TagOrdering.ALPHABETIC;
+
     public MetricName(String key, Map<String, String> tags) {
         this.key = Objects.requireNonNull(key);
-        this.tags = tags.isEmpty() ? EMPTY_TAGS : unmodifiableSortedCopy(tags);
+        this.tags = tags.isEmpty() ? EMPTY_TAGS : copyWithTagOrdering(tagOrdering, tags);
     }
-    
+
     public String getKey() {
         return key;
+    }
+
+    /**
+     * Specify which ordering to apply on the metric tags
+     *
+     * @param tagOrdering the tag ordering logic to apply.
+     *                    if USER_GIVEN specified user is responsible to order the tags on passing
+     */
+    public void withTagOrdering(TagOrdering tagOrdering) {
+        this.tagOrdering = tagOrdering;
     }
 
     /**
@@ -187,6 +198,22 @@ public class MetricName implements Comparable<MetricName> {
         }
     }
 
+    private static <K extends Comparable<K>,V> Map<K, V> copyWithTagOrdering(TagOrdering tagOrdering, Map<K, V> map) {
+        switch (tagOrdering) {
+            case USER_GIVEN:
+                return unmodifiableCopy(map);
+            case ALPHABETIC:
+            default:
+                return unmodifiableSortedCopy(map);
+        }
+    }
+
+    private static <K extends Comparable<K>,V> Map<K, V> unmodifiableCopy(Map<K, V> map) {
+        LinkedHashMap<K, V> copy = new LinkedHashMap<>();
+        map.forEach(copy::put);
+        return Collections.unmodifiableMap(copy);
+    }
+
     private static <K extends Comparable<K>,V> Map<K, V> unmodifiableSortedCopy(Map<K, V> map) {
         LinkedHashMap<K, V> sorted = new LinkedHashMap<>();
         map.entrySet()
@@ -196,4 +223,8 @@ public class MetricName implements Comparable<MetricName> {
         return Collections.unmodifiableMap(sorted);
     }
 
+    public enum TagOrdering {
+        ALPHABETIC,
+        USER_GIVEN
+    }
 }
